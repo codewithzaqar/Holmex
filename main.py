@@ -11,13 +11,23 @@ logging.basicConfig(
 )
 
 def main():
-    parser = argparse.ArgumentParser(description="Holmex v0.04 - Username Checker")
+    parser = argparse.ArgumentParser(description="Holmex v0.05 - Username Checker")
     parser.add_argument("username", help="Username to search for")
-    parser.add_argument("--proxy", help="Proxy URL (e.g., http://proxy:port)")
+    parser.add_argument("--proxy", help="Single proxy URL (overrides config)")
     args = parser.parse_args()
 
-    print(f"Holmex v0.04 - Checking username: {args.username}")
+    print(f"Holmex v0.05 - Checking username: {args.username}")
     
+    # Load config
+    try:
+        with open('config.json', 'r') as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        print("Error: config.json not found!")
+        logging.error("config.json not found")
+        return
+    
+    # Load sites
     try:
         with open('sites.json', 'r') as f:
             sites = json.load(f)
@@ -26,13 +36,14 @@ def main():
         logging.error("sites.json not found")
         return
     
-    print(f"\nChecking {len(sites)} sites...")
+    proxies = [args.proxy] if args.proxy else config.get('proxies', [])
+    print(f"\nChecking {len(sites)} sites with {len(proxies) or 'no'} proxies...")
     logging.info(f"Starting username check for: {args.username}")
     
-    results = check_usernames(args.username, sites, args.proxy)
+    results = check_usernames(args.username, sites, proxies, config)
     
-    for site_name, result in results.items():
-        print_result(site_name, result)
+    for site_name, (exists, status) in results.items():
+        print_result(site_name, exists, status)
     
     print_summary(results)
     save_results(args.username, results)

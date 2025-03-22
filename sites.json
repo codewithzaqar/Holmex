@@ -1,7 +1,27 @@
 {
-    "Twitter": "https://twitter.com/",
-    "GitHub": "https://github.com/",
-    "Instagram": "https://instagram.com/",
-    "Reddit": "https://reddit.com/user/",
-    "LinkedIn": "https://linkedin.com/in/"
+    "Twitter": {
+        "url": "https://twitter.com/",
+        "success_codes": [200],
+        "error_string": "This account doesn’t exist"
+    },
+    "GitHub": {
+        "url": "https://github.com/",
+        "success_codes": [200],
+        "error_string": "404"
+    },
+    "Instagram": {
+        "url": "https://instagram.com/",
+        "success_codes": [200],
+        "error_string": "The link you followed may be broken"
+    },
+    "Reddit": {
+        "url": "https://reddit.com/user/",
+        "success_codes": [200],
+        "error_string": "page not found"
+    },
+    "LinkedIn": {
+        "url": "https://linkedin.com/in/",
+        "success_codes": [200, 999],
+        "error_string": "profile was not found"
+    }
 }

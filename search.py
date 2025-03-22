@@ -2,46 +2,58 @@ import requests
 import concurrent.futures
 import time
 import logging
+import random
 from tqdm import tqdm
 
-def check_single_username(username, base_url, proxy=None, attempt=1, max_attempts=3):
+def check_single_username(username, site_info, proxies, config, attempt=1):
+    base_url = site_info['url']
+    success_codes = site_info.get('success_codes', [200])
+    error_string = site_info.get('error_string')
+    
     try:
         url = f"{base_url}{username}"
-        proxies = {"http": proxy, "https": proxy} if proxy else None
-        response = requests.get(url, timeout=5, proxies=proxies)
+        proxy = random.choice(proxies) if proxies else None
+        proxies_dict = {"http": proxy, "https": proxy} if proxy else None
         
-        if response.status_code == 429:  # Too Many Requests
-            if attempt >= max_attempts:
+        response = requests.get(url, timeout=config['timeout'], proxies=proxies_dict)
+        
+        if response.status_code == 429:
+            if attempt >= config['max_attempts']:
                 logging.warning(f"Max attempts reached for {url}")
-                return False
-            delay = 2 ** attempt  # Exponential backoff: 2s, 4s, 8s
+                return False, response.status_code
+            delay = config['base_delay'] ** attempt
             logging.warning(f"Rate limited at {url}, retrying in {delay}s")
             time.sleep(delay)
-            return check_single_username(username, base_url, proxy, attempt + 1, max_attempts)
+            return check_single_username(username, site_info, proxies, config, attempt + 1)
         
-        return response.status_code == 200
+        exists = False
+        if response.status_code in success_codes:
+            exists = True
+            if error_string and error_string in response.text:
+                exists = False
+        
+        return exists, response.status_code
     
     except requests.RequestException as e:
         logging.error(f"Error checking {url}: {str(e)}")
-        return False
+        return False, 0
 
-def check_usernames(username, sites, proxy=None):
+def check_usernames(username, sites, proxies, config):
     results = {}
     
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=config['max_workers']) as executor:
         future_to_site = {
-            executor.submit(check_single_username, username, url, proxy): site 
-            for site, url in sites.items()
+            executor.submit(check_single_username, username, site_info, proxies, config): site 
+            for site, site_info in sites.items()
         }
         
-        # Progress bar
         with tqdm(total=len(sites), desc="Progress") as pbar:
             for future in concurrent.futures.as_completed(future_to_site):
                 site = future_to_site[future]
                 try:
                     results[site] = future.result()
                 except Exception as e:
-                    results[site] = False
+                    results[site] = (False, 0)
                     logging.error(f"Exception for {site}: {str(e)}")
                 pbar.update(1)
     

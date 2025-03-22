@@ -1,0 +1,7 @@
+{
+    "max_workers": 5,
+    "timeout": 5,
+    "max_attempts": 3,
+    "base_delay": 2,
+    "proxies": [ "http://localhost:8080" ]
+}
